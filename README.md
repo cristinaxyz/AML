@@ -1,3 +1,8 @@
+```
+curl -L -o data/brats2020-training-data.zip\ 
+  https://www.kaggle.com/api/v1/datasets/download/awsaf49/brats2020-training-data
+```
+
 # Applied ML Template 🛠️
 
 **Welcome to Applied Machine Learning!** This template is designed to streamline the development process and boost the quality of your code.
