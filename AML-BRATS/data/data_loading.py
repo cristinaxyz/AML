@@ -48,9 +48,9 @@ def split_by_volume(
 
 
 class BRATSDataset(Dataset):
-    def __init__(self, metadata: pd.DataFrame, augumented: bool = False) -> None:
+    def __init__(self, metadata: pd.DataFrame, augmented: bool = False) -> None:
         self.metadata = metadata
-        self.augumented = augumented
+        self.augmented = augmented
         self.train_transform = A.Compose([
             A.Rotate(limit=5, 
                      border_mode=0, 
@@ -93,17 +93,17 @@ class BRATSDataset(Dataset):
                 if std > 0:
                     image[:, :, channel] = (channel_data - mean) / std
 
-        if self.augumented:
-            augumented_version = self.train_transform(image=image, mask=mask)
-            image = augumented_version["image"]
-            mask = augumented_version["mask"]
+        if self.augmented:
+            augmented_version = self.train_transform(image=image, mask=mask)
+            image = augmented_version["image"]
+            mask = augmented_version["mask"]
 
         return {
             "image": image,
             "mask": mask,
         }
 
-        # Preprocessing and/or data augumentation should go here i think?
+        # Preprocessing and/or data augmentation should go here i think?
 
 
 metadata = load_metadata(Path("data/BraTS20 Training Metadata.csv"))
@@ -155,7 +155,7 @@ fold_number = 1
 
 for fold_train_metadata, fold_val_metadata in cv_splits:
     print(f"Fold {fold_number}")
-    fold_train_ds = BRATSDataset(fold_train_metadata, augumented=True)
+    fold_train_ds = BRATSDataset(fold_train_metadata, augmented=True)
     fold_val_ds = BRATSDataset(fold_val_metadata)
     print("Train size:", len(fold_train_ds))
     print("Validation size:", len(fold_val_ds))
