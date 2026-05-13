@@ -5,13 +5,15 @@ import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
 
+
 DATA_PATH = Path("data/BraTS2020_training_data")
 
 
 def _process_path(path_str: str) -> Path:
-    """Convert a single path to work with the project file structure."""
-    relative_path = Path(path_str).relative_to("/")
-    return DATA_PATH / relative_path
+    """Convert the Kaggle CSV path to the local project path."""
+    path = Path(path_str)
+    filename = path.name
+    return DATA_PATH / "content/data" / filename
 
 
 def load_metadata(path: Path) -> pd.DataFrame:
@@ -58,6 +60,22 @@ class BRATSDataset(Dataset):
             image: np.ndarray = f["image"][()]
             mask: np.ndarray = f["mask"][()]
 
+        image = image.astype(np.float32)
+            # Normalize each MRI channel
+        for channel in range(image.shape[-1]):
+            channel_data = image[:, :, channel]
+
+        # Use only non-zero pixels so the black background does not affect 
+            non_zero_pixels = channel_data[channel_data > 0]
+
+            if len(non_zero_pixels) > 0:
+                mean = non_zero_pixels.mean()
+                std = non_zero_pixels.std()
+
+            # Avoid dividing by zero
+                if std > 0:
+                    image[:, :, channel] = (channel_data - mean) / std
+
         return {
             "image": image,
             "mask": mask,
@@ -66,7 +84,7 @@ class BRATSDataset(Dataset):
         # Preprocessing and/or data augumentation should go here i think?
 
 
-metadata = load_metadata(DATA_PATH / "content/data/meta_data.csv")
+metadata = load_metadata(Path("data/BraTS20 Training Metadata.csv"))
 train_metadata, test_metadata = split_by_volume(metadata)
 
 def make_cv_splits(
