@@ -4,6 +4,7 @@ import h5py
 import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
+import albumentations as A
 
 
 DATA_PATH = Path("data/BraTS2020_training_data")
@@ -47,8 +48,24 @@ def split_by_volume(
 
 
 class BRATSDataset(Dataset):
-    def __init__(self, metadata: pd.DataFrame) -> None:
+    def __init__(self, metadata: pd.DataFrame, augumented: bool = False) -> None:
         self.metadata = metadata
+        self.augumented = augumented
+        self.train_transform = A.Compose([
+            A.Rotate(limit=5, 
+                     border_mode=0, 
+                     p=0.5),
+            A.ShiftScaleRotate(shift_limit=0.02, 
+                               scale_limit=0.02, 
+                               border_mode=0, 
+                               rotate_limit=0, 
+                               p=0.3),
+            A.GaussNoise(std_range=(0.01, 0.02), 
+                         p=0.3),
+            A.RandomBrightnessContrast(brightness_limit=0.1, 
+                                       contrast_limit=0.1, 
+                                       p=0.3),
+        ])
 
     def __len__(self) -> int:
         return len(self.metadata)
@@ -75,6 +92,11 @@ class BRATSDataset(Dataset):
             # Avoid dividing by zero
                 if std > 0:
                     image[:, :, channel] = (channel_data - mean) / std
+
+        if self.augumented:
+            augumented_version = self.train_transform(image=image, mask=mask)
+            image = augumented_version["image"]
+            mask = augumented_version["mask"]
 
         return {
             "image": image,
@@ -133,7 +155,7 @@ fold_number = 1
 
 for fold_train_metadata, fold_val_metadata in cv_splits:
     print(f"Fold {fold_number}")
-    fold_train_ds = BRATSDataset(fold_train_metadata)
+    fold_train_ds = BRATSDataset(fold_train_metadata, augumented=True)
     fold_val_ds = BRATSDataset(fold_val_metadata)
     print("Train size:", len(fold_train_ds))
     print("Validation size:", len(fold_val_ds))
