@@ -122,6 +122,15 @@ def make_cv_splits(
     return cv_splits
 
 
+def get_dataset_folds() -> tuple[
+    list[tuple[pd.DataFrame, pd.DataFrame]], pd.DataFrame
+]:
+    metadata = load_metadata(DATA_PATH / "content/data/meta_data.csv")
+    train_metadata, test_metadata = split_by_volume(metadata)
+    cv_splits = make_cv_splits(train_metadata, k=5)
+    return cv_splits, test_metadata
+
+
 if __name__ == "__main__":
     metadata = load_metadata(DATA_PATH / "content/data/meta_data.csv")
     train_metadata, test_metadata = split_by_volume(metadata)
