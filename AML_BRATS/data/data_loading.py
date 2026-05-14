@@ -101,6 +101,9 @@ class BRATSDataset(Dataset):
             image = augmented_version["image"]
             mask = augmented_version["mask"]
 
+        image = np.moveaxis(image, -1, 0).astype(np.float32)
+        mask = np.moveaxis(mask, -1, 0).astype(np.float32)
+
         return {
             "image": image,
             "mask": mask,
