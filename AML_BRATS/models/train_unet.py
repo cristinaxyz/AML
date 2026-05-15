@@ -5,7 +5,7 @@ from ..data.data_loading import BRATSDataset, get_dataset_folds
 from .train_model import train_model
 from .unet import UNet
 
-LR = 1e-4
+LR = 1e-3
 NUM_EPOCHS = 20
 
 
