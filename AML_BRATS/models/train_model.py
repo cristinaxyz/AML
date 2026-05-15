@@ -2,6 +2,7 @@ from typing import Callable
 
 import torch
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 
@@ -84,15 +85,21 @@ def train_model(
     loss_fn: Callable[..., torch.Tensor],
     optimizer: torch.optim.Optimizer,
     epochs: int,
+    run_name: str,
     device: torch.device = _get_device(),
 ) -> tuple[float, float]:
+    writer = SummaryWriter(f"runs/{run_name}")
+
     train_loss = 0.0
     val_loss = 0.0
 
-    for i in range(epochs):
-        print(f"Epoch {i + 1}")
+    for epoch in range(epochs):
+        print(f"Epoch {epoch + 1}")
         train_loss = train_epoch(train_dl, model, loss_fn, optimizer, device)
         val_loss = validation_epoch(validation_dl, model, loss_fn, device)
+        writer.add_scalar("Loss/train", train_loss, epoch)
+        writer.add_scalar("Loss/val", val_loss, epoch)
         print(f"Train loss: {train_loss}, validation loss: {val_loss}")
 
+    torch.save(model.state_dict(), f"models/{run_name}_final.pkl")
     return train_loss, val_loss

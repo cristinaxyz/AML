@@ -27,19 +27,28 @@ class DiceLoss(torch.nn.Module):
         return 1 - dice.mean()
 
 
-folds, _ = get_dataset_folds()
-for i, fold in enumerate(folds):
-    model = UNet(3)
-    train_ds = BRATSDataset(fold[0], augmented=True)
-    val_ds = BRATSDataset(fold[1])
+if __name__ == "__main__":
+    folds, _ = get_dataset_folds()
+    for i, fold in enumerate(folds):
+        model = UNet(3)
+        train_ds = BRATSDataset(fold[0], augmented=True)
+        val_ds = BRATSDataset(fold[1])
 
-    train_dl = DataLoader(train_ds, batch_size=8, num_workers=4, shuffle=True)
-    val_dl = DataLoader(val_ds, batch_size=8, num_workers=4)
+        train_dl = DataLoader(
+            train_ds, batch_size=8, num_workers=4, shuffle=True
+        )
+        val_dl = DataLoader(val_ds, batch_size=8, num_workers=4)
 
-    loss_fn = DiceLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+        loss_fn = DiceLoss()
+        optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 
-    print(f"Training fold {i + 1}/{len(folds)}")
-    train_loss, val_loss = train_model(
-        model, train_dl, val_dl, loss_fn, optimizer, NUM_EPOCHS
-    )
+        print(f"Training fold {i + 1}/{len(folds)}")
+        train_loss, val_loss = train_model(
+            model,
+            train_dl,
+            val_dl,
+            loss_fn,
+            optimizer,
+            NUM_EPOCHS,
+            run_name=f"unet_E{NUM_EPOCHS}_FOLD{i + 1}",
+        )
