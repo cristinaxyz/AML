@@ -85,64 +85,62 @@ class BRATSDataset(Dataset):
             "mask": mask,
         }
 
-        # Preprocessing and/or data augumentation should go here i think?
-
-
-metadata = load_metadata(Path("data/BraTS20 Training Metadata.csv"))
-train_metadata, test_metadata = split_by_volume(metadata)
 
 def make_cv_splits(
     train_metadata: pd.DataFrame,
     k: int = 5,
     seed: int = 42,
 ) -> list[tuple[pd.DataFrame, pd.DataFrame]]:
-    #Splitting this with k cross-validation. (by patient)
+    # Splitting this with k cross-validation. (by patient)
 
-    #to get all uniqur patient IDs from the training metadata
+    # to get all uniqur patient IDs from the training metadata
     volumes = train_metadata["volume"].unique()
 
-    #random number generator so that we can have the same split every time we run
+    # random number generator so that we can have the same split every time we run
     rng = np.random.default_rng(seed)
-    #to shuffle the patient ID
+    # to shuffle the patient ID
     rng.shuffle(volumes)
 
-    #group the patients by splitting the shuffled ids
+    # group the patients by splitting the shuffled ids
     volume_folds = np.array_split(volumes, k)
 
     cv_splits = []
 
-    #go through each fold and use the current as a validation set while the rest are just training
+    # go through each fold and use the current as a validation set while the rest are just training
     for i in range(k):
         val_volumes = volume_folds[i]
 
-        train_volumes = np.concatenate([
-            volume_folds[j] for j in range(k) if j != i
-        ])
-        #training folds
-        fold_train = train_metadata[train_metadata["volume"].isin(train_volumes)]
-        #validation folds
+        train_volumes = np.concatenate(
+            [volume_folds[j] for j in range(k) if j != i]
+        )
+        # training folds
+        fold_train = train_metadata[
+            train_metadata["volume"].isin(train_volumes)
+        ]
+        # validation folds
         fold_val = train_metadata[train_metadata["volume"].isin(val_volumes)]
 
-        #save
+        # save
         cv_splits.append((fold_train, fold_val))
 
     return cv_splits
 
 
-metadata = load_metadata(DATA_PATH / "content/data/meta_data.csv")
-train_metadata, test_metadata = split_by_volume(metadata)
-cv_splits = make_cv_splits(train_metadata, k=5)
-test_ds = BRATSDataset(test_metadata)
-fold_number = 1
+if __name__ == "__main__":
+    metadata = load_metadata(DATA_PATH / "content/data/meta_data.csv")
+    train_metadata, test_metadata = split_by_volume(metadata)
+    cv_splits = make_cv_splits(train_metadata, k=5)
+    test_ds = BRATSDataset(test_metadata)
+    fold_number = 1
 
-for fold_train_metadata, fold_val_metadata in cv_splits:
-    print(f"Fold {fold_number}")
-    fold_train_ds = BRATSDataset(fold_train_metadata)
-    fold_val_ds = BRATSDataset(fold_val_metadata)
-    print("Train size:", len(fold_train_ds))
-    print("Validation size:", len(fold_val_ds))
-    print()
-    fold_number += 1
+    for fold_train_metadata, fold_val_metadata in cv_splits:
+        print(f"Fold {fold_number}")
+        fold_train_ds = BRATSDataset(fold_train_metadata)
+        fold_val_ds = BRATSDataset(fold_val_metadata)
+        print("Train size:", len(fold_train_ds))
+        print("Validation size:", len(fold_val_ds))
+        print()
+        fold_number += 1
 
 print("Test size:", len(test_ds))
 print("One test example:")
