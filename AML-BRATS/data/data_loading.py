@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import albumentations as A
 import h5py
 import numpy as np
 import pandas as pd
@@ -47,8 +48,27 @@ def split_by_volume(
 
 
 class BRATSDataset(Dataset):
-    def __init__(self, metadata: pd.DataFrame) -> None:
+    def __init__(
+        self, metadata: pd.DataFrame, augmented: bool = False
+    ) -> None:
         self.metadata = metadata
+        self.augmented = augmented
+        self.train_transform = A.Compose(
+            [
+                A.Rotate(limit=5, border_mode=0, p=0.5),
+                A.ShiftScaleRotate(
+                    shift_limit=0.02,
+                    scale_limit=0.02,
+                    border_mode=0,
+                    rotate_limit=0,
+                    p=0.3,
+                ),
+                A.GaussNoise(std_range=(0.01, 0.02), p=0.3),
+                A.RandomBrightnessContrast(
+                    brightness_limit=0.1, contrast_limit=0.1, p=0.3
+                ),
+            ]
+        )
 
     def __len__(self) -> int:
         return len(self.metadata)
@@ -79,6 +99,11 @@ class BRATSDataset(Dataset):
             channel_data[~brain_mask] = 0
 
             image[:, :, channel] = channel_data
+
+        if self.augmented:
+            augmented_version = self.train_transform(image=image, mask=mask)
+            image = augmented_version["image"]
+            mask = augmented_version["mask"]
 
         return {
             "image": image,
@@ -135,7 +160,7 @@ if __name__ == "__main__":
 
     for fold_train_metadata, fold_val_metadata in cv_splits:
         print(f"Fold {fold_number}")
-        fold_train_ds = BRATSDataset(fold_train_metadata)
+        fold_train_ds = BRATSDataset(fold_train_metadata, augmented=True)
         fold_val_ds = BRATSDataset(fold_val_metadata)
         print("Train size:", len(fold_train_ds))
         print("Validation size:", len(fold_val_ds))
