@@ -5,9 +5,9 @@ import h5py
 import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
+import os
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DATA_PATH = PROJECT_ROOT / "data" / "BraTS2020_training_data"
+DATA_PATH = Path("data/BraTS2020_training_data")
 
 
 def _process_path(path_str: str) -> Path:
@@ -81,20 +81,24 @@ class BRATSDataset(Dataset):
             mask: np.ndarray = f["mask"][()]
 
         image = image.astype(np.float32)
-        # Normalize each MRI channel
+
+        brain_mask = np.any(image > 0, axis=-1)
+
         for channel in range(image.shape[-1]):
             channel_data = image[:, :, channel]
 
-            # Use only non-zero pixels so the black background does not affect
-            non_zero_pixels = channel_data[channel_data > 0]
+            brain_pixels = channel_data[brain_mask]
 
-            if len(non_zero_pixels) > 0:
-                mean = non_zero_pixels.mean()
-                std = non_zero_pixels.std()
+            if len(brain_pixels) > 0:
+                mean = brain_pixels.mean()
+                std = brain_pixels.std()
 
-                # Avoid dividing by zero
                 if std > 0:
-                    image[:, :, channel] = (channel_data - mean) / std
+                    channel_data[brain_mask] = (channel_data[brain_mask] - mean) / std
+
+            channel_data[~brain_mask] = 0
+
+            image[:, :, channel] = channel_data
 
         if self.augmented:
             augmented_version = self.train_transform(image=image, mask=mask)
@@ -175,6 +179,16 @@ if __name__ == "__main__":
         print()
         fold_number += 1
 
-    print("Test size:", len(test_ds))
-    print("One test example:")
-    print(test_ds[0])
+print("Test size:", len(test_ds))
+print("One test example:")
+
+sample = test_ds[50]
+
+print("Image shape:", sample["image"].shape)
+print("Mask shape:", sample["mask"].shape)
+
+print("Image min:", sample["image"].min())
+print("Image max:", sample["image"].max())
+print("Number of non-zero image pixels:", np.count_nonzero(sample["image"]))
+
+print("Mask unique values:", np.unique(sample["mask"]))
