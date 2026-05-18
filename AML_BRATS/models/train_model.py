@@ -113,9 +113,9 @@ def train_model(
 
 
 def train_k_fold(
-    model: torch.nn.Module,
+    model_fn: Callable[[], torch.nn.Module],
+    optimizer_fn: Callable[[object], torch.optim.Optimizer],
     loss_fn: Callable[..., torch.Tensor],
-    optimizer: torch.optim.Optimizer,
     epochs: int,
     run_name: str,
     batch_size: int = 8,
@@ -137,6 +137,9 @@ def train_k_fold(
         val_dl = DataLoader(val_ds, batch_size=batch_size, num_workers=4)
 
         print(f"Training fold {i + 1}/{len(folds)}")
+        model = model_fn()
+        optimizer = optimizer_fn(model.parameters())
+
         train_loss, val_loss = train_model(
             model,
             train_dl,
@@ -149,4 +152,5 @@ def train_k_fold(
         total_train_loss += train_loss
         total_val_loss += val_loss
 
-    return total_train_loss / len(folds), total_val_loss / len(folds)
+    n = len(folds) if len(folds) > 0 else 1
+    return total_train_loss / n, total_val_loss / n

@@ -3,7 +3,7 @@ import torch
 from .train_model import train_k_fold
 from .unet import UNet
 
-LR = 1e-3
+LR = 1e-4
 NUM_EPOCHS = 20
 
 
@@ -26,14 +26,18 @@ class DiceLoss(torch.nn.Module):
 
 
 if __name__ == "__main__":
-    model = UNet(3)
     loss_fn = DiceLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+
+    def model_fn():
+        return UNet(3)
+
+    def optimizer_fn(params):
+        return torch.optim.Adam(params, lr=LR)
 
     train_k_fold(
-        model,
+        model_fn,
+        optimizer_fn,
         loss_fn,
-        optimizer,
         epochs=NUM_EPOCHS,
         run_name=f"UNET_20EPOCHS_{LR}LR",
     )
