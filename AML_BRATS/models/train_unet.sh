@@ -1,5 +1,8 @@
-#SBATCH --gpus-per-node=v100:1
-#SBATCH --time=2-00:00:00
+#!/bin/bash
+
+#SBATCH --gpus-per-node=1
+#SBATCH --time=4:00:00
 #SBATCH --mem=8GB
 
-srun .venv/bin/python -m AML_BRATS.models.train_unet
+module load uv
+srun uv run python -m AML_BRATS.models.train_unet

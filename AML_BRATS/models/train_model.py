@@ -118,7 +118,7 @@ def train_k_fold(
     loss_fn: Callable[..., torch.Tensor],
     epochs: int,
     run_name: str,
-    batch_size: int = 8,
+    batch_size: int = 64,
 ) -> tuple[float, float]:
     """
     Train a given model for all k folds.
@@ -147,7 +147,7 @@ def train_k_fold(
             loss_fn,
             optimizer,
             epochs,
-            run_name=f"{run_name}_FOLD{i + 1}",
+            run_name=f"{run_name}_BS{batch_size}_FOLD{i + 1}",
         )
         total_train_loss += train_loss
         total_val_loss += val_loss
