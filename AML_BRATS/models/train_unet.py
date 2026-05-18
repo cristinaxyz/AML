@@ -1,8 +1,6 @@
 import torch
-from torch.utils.data import DataLoader
 
-from ..data.data_loading import BRATSDataset, get_dataset_folds
-from .train_model import train_model
+from .train_model import train_k_fold
 from .unet import UNet
 
 LR = 1e-3
@@ -28,27 +26,14 @@ class DiceLoss(torch.nn.Module):
 
 
 if __name__ == "__main__":
-    folds, _ = get_dataset_folds()
-    for i, fold in enumerate(folds):
-        model = UNet(3)
-        train_ds = BRATSDataset(fold[0], augmented=True)
-        val_ds = BRATSDataset(fold[1])
+    model = UNet(3)
+    loss_fn = DiceLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 
-        train_dl = DataLoader(
-            train_ds, batch_size=8, num_workers=4, shuffle=True
-        )
-        val_dl = DataLoader(val_ds, batch_size=8, num_workers=4)
-
-        loss_fn = DiceLoss()
-        optimizer = torch.optim.Adam(model.parameters(), lr=LR)
-
-        print(f"Training fold {i + 1}/{len(folds)}")
-        train_loss, val_loss = train_model(
-            model,
-            train_dl,
-            val_dl,
-            loss_fn,
-            optimizer,
-            NUM_EPOCHS,
-            run_name=f"unet_E{NUM_EPOCHS}_FOLD{i + 1}",
-        )
+    train_k_fold(
+        model,
+        loss_fn,
+        optimizer,
+        epochs=NUM_EPOCHS,
+        run_name=f"UNET_20EPOCHS_{LR}LR",
+    )

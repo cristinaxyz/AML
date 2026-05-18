@@ -5,7 +5,6 @@ import h5py
 import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
-import os
 
 DATA_PATH = Path("data/BraTS2020_training_data")
 
@@ -94,7 +93,9 @@ class BRATSDataset(Dataset):
                 std = brain_pixels.std()
 
                 if std > 0:
-                    channel_data[brain_mask] = (channel_data[brain_mask] - mean) / std
+                    channel_data[brain_mask] = (
+                        channel_data[brain_mask] - mean
+                    ) / std
 
             channel_data[~brain_mask] = 0
 
@@ -179,16 +180,18 @@ if __name__ == "__main__":
         print()
         fold_number += 1
 
-print("Test size:", len(test_ds))
-print("One test example:")
+    print("Test size:", len(test_ds))
+    print("One test example:")
 
-sample = test_ds[50]
+    sample = test_ds[50]
 
-print("Image shape:", sample["image"].shape)
-print("Mask shape:", sample["mask"].shape)
+    print("Image shape:", sample["image"].shape)
+    print("Mask shape:", sample["mask"].shape)
 
-print("Image min:", sample["image"].min())
-print("Image max:", sample["image"].max())
-print("Number of non-zero image pixels:", np.count_nonzero(sample["image"]))
+    print("Image min:", sample["image"].min())
+    print("Image max:", sample["image"].max())
+    print(
+        "Number of non-zero image pixels:", np.count_nonzero(sample["image"])
+    )
 
-print("Mask unique values:", np.unique(sample["mask"]))
+    print("Mask unique values:", np.unique(sample["mask"]))
