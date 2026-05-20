@@ -88,6 +88,7 @@ def train_model(
     optimizer: torch.optim.Optimizer,
     epochs: int,
     run_name: str,
+    metrics: dict[str, Callable[..., torch.Tensor]] = {},
     device: torch.device = _get_device(),
 ) -> tuple[float, float]:
     """
@@ -103,9 +104,13 @@ def train_model(
     for epoch in range(epochs):
         print(f"Epoch {epoch + 1}")
         train_loss = train_epoch(train_dl, model, loss_fn, optimizer, device)
-        val_loss = validation_epoch(validation_dl, model, loss_fn, device)
         writer.add_scalar("Loss/train", train_loss, epoch)
+        val_loss = validation_epoch(validation_dl, model, loss_fn, device)
         writer.add_scalar("Loss/val", val_loss, epoch)
+        for metric_name, metric_fn in metrics.items():
+            metric_value = metric_fn(model(validation_dl.dataset[0]["image"].unsqueeze(0).to(device)), validation_dl.dataset[0]["mask"].to(device))
+            writer.add_scalar(f"Metrics/{metric_name}/val", metric_value.item(), epoch)
+            print(f"Validation {metric_name}: {metric_value.item()}")
         print(f"Train loss: {train_loss}, validation loss: {val_loss}")
 
     torch.save(model.state_dict(), f"models/{run_name}_final.pkl")
@@ -118,6 +123,7 @@ def train_k_fold(
     loss_fn: Callable[..., torch.Tensor],
     epochs: int,
     run_name: str,
+    metrics: dict[str, Callable[..., torch.Tensor]] = {},
     batch_size: int = 64,
 ) -> tuple[float, float]:
     """
@@ -132,9 +138,9 @@ def train_k_fold(
         val_ds = BRATSDataset(fold[1])
 
         train_dl = DataLoader(
-            train_ds, batch_size=batch_size, num_workers=4, shuffle=True
+            train_ds, batch_size=batch_size, num_workers=8, shuffle=True
         )
-        val_dl = DataLoader(val_ds, batch_size=batch_size, num_workers=4)
+        val_dl = DataLoader(val_ds, batch_size=batch_size, num_workers=8)
 
         print(f"Training fold {i + 1}/{len(folds)}")
         model = model_fn()
@@ -147,6 +153,7 @@ def train_k_fold(
             loss_fn,
             optimizer,
             epochs,
+            metrics=metrics,
             run_name=f"{run_name}_BS{batch_size}_FOLD{i + 1}",
         )
         total_train_loss += train_loss
