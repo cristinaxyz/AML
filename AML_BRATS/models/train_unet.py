@@ -6,12 +6,16 @@ from .unet import UNet
 LR = 6e-2
 NUM_EPOCHS = 20
 
-def calculate_dice(probs: torch.Tensor, targets: torch.Tensor, smooth: float = 1e-5) -> torch.Tensor:
+
+def calculate_dice(
+    probs: torch.Tensor, targets: torch.Tensor, smooth: float = 1e-5
+) -> torch.Tensor:
     num = 2 * (probs * targets).sum(dim=(2, 3))
     den = probs.sum(dim=(2, 3)) + targets.sum(dim=(2, 3))
 
     dice = (num + smooth) / (den + smooth)
     return dice.mean()
+
 
 class DiceLoss(torch.nn.Module):
     def __init__(self, smooth: float = 1e-5) -> None:
@@ -24,10 +28,23 @@ class DiceLoss(torch.nn.Module):
         return 1 - calculate_dice(logits.sigmoid(), targets, self.smooth)
 
 
+class DiceBCELoss(torch.nn.Module):
+    def __init__(self, bce_weight: float = 1.0, smooth: float = 1e-5) -> None:
+        super().__init__()
+        self.bce = torch.nn.BCEWithLogitsLoss()
+        self.dice = DiceLoss(smooth)
+        self.bce_weight = bce_weight
+
+    def forward(
+        self, logits: torch.Tensor, targets: torch.Tensor
+    ) -> torch.Tensor:
+        return self.bce_weight * self.bce(logits, targets) + self.dice(
+            logits, targets
+        )
+
+
 if __name__ == "__main__":
-    bce_loss = torch.nn.BCEWithLogitsLoss()
-    dice_loss = DiceLoss()
-    loss_fn = lambda logits, targets: bce_loss(logits, targets) + dice_loss(logits, targets)
+    loss_fn = DiceBCELoss()
 
     def model_fn():
         return UNet(3)

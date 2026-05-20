@@ -72,6 +72,45 @@ def validation_epoch(
     return val_loss / total_samples if total_samples else 0.0
 
 
+def compute_validation_metrics(
+    dataloader: DataLoader,
+    model: torch.nn.Module,
+    metrics: dict[str, Callable[..., torch.Tensor]],
+    device: torch.device,
+) -> dict[str, float]:
+    """Compute all metrics over the validation dataloader in a single pass."""
+    model.to(device)
+    model.eval()
+
+    metric_sums: dict[str, float] = {name: 0.0 for name in metrics}
+    total_samples = 0
+
+    with torch.no_grad():
+        for datapoint in tqdm(dataloader, desc="Metrics"):
+            X = datapoint["image"].to(device)
+            y_true = datapoint["mask"].to(device)
+            batch_size = X.size(0)
+
+            y_pred = model(X)
+
+            for metric_name, metric_fn in metrics.items():
+                metric_val = metric_fn(y_pred.sigmoid(), y_true)
+
+                if metric_val.numel() == 1:
+                    metric_val = float(metric_val.item())
+                else:
+                    metric_val = float(metric_val.mean().item())
+
+                metric_sums[metric_name] += metric_val * batch_size
+
+            total_samples += batch_size
+
+    if total_samples == 0:
+        return {name: 0.0 for name in metrics}
+
+    return {name: metric_sums[name] / total_samples for name in metrics}
+
+
 def _get_device() -> torch.device:
     return (
         torch.device("cuda")
@@ -107,10 +146,15 @@ def train_model(
         writer.add_scalar("Loss/train", train_loss, epoch)
         val_loss = validation_epoch(validation_dl, model, loss_fn, device)
         writer.add_scalar("Loss/val", val_loss, epoch)
-        for metric_name, metric_fn in metrics.items():
-            metric_value = metric_fn(model(validation_dl.dataset[0]["image"].unsqueeze(0).to(device)), validation_dl.dataset[0]["mask"].to(device))
-            writer.add_scalar(f"Metrics/{metric_name}/val", metric_value.item(), epoch)
-            print(f"Validation {metric_name}: {metric_value.item()}")
+        if metrics:
+            metric_avgs = compute_validation_metrics(
+                validation_dl, model, metrics, device
+            )
+            for metric_name, metric_avg in metric_avgs.items():
+                writer.add_scalar(
+                    f"Metrics/{metric_name}/val", metric_avg, epoch
+                )
+                print(f"Validation {metric_name}: {metric_avg}")
         print(f"Train loss: {train_loss}, validation loss: {val_loss}")
 
     torch.save(model.state_dict(), f"models/{run_name}_final.pkl")
