@@ -48,10 +48,15 @@ def split_by_volume(
 
 class BRATSDataset(Dataset):
     def __init__(
-        self, metadata: pd.DataFrame, augmented: bool = False
+        self,
+        metadata: pd.DataFrame,
+        augmented: bool = False,
+        base_path: Path = Path("."),
     ) -> None:
         self.metadata = metadata
         self.augmented = augmented
+        self.base_path = base_path
+
         self.train_transform = A.Compose(
             [
                 A.Rotate(limit=5, border_mode=0, p=0.5),
@@ -75,7 +80,7 @@ class BRATSDataset(Dataset):
     def __getitem__(self, idx: int) -> dict[str, np.ndarray]:
         path = self.metadata.iloc[idx]["slice_path"]
 
-        with h5py.File(path, "r") as f:
+        with h5py.File(self.base_path / path, "r") as f:
             image: np.ndarray = f["image"][()]
             mask: np.ndarray = f["mask"][()]
 
@@ -155,10 +160,10 @@ def make_cv_splits(
     return cv_splits
 
 
-def get_dataset_folds() -> tuple[
-    list[tuple[pd.DataFrame, pd.DataFrame]], pd.DataFrame
-]:
-    metadata = load_metadata(DATA_PATH / "content/data/meta_data.csv")
+def get_dataset_folds(
+    metadata_dir: Path | str = DATA_PATH / "content/data/meta_data.csv",
+) -> tuple[list[tuple[pd.DataFrame, pd.DataFrame]], pd.DataFrame]:
+    metadata = load_metadata(Path(metadata_dir))
     train_metadata, test_metadata = split_by_volume(metadata)
     cv_splits = make_cv_splits(train_metadata, k=5)
     return cv_splits, test_metadata
