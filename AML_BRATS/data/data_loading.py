@@ -5,7 +5,6 @@ import h5py
 import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
-import os
 
 DATA_PATH = Path("data/BraTS2020_training_data")
 
@@ -49,10 +48,15 @@ def split_by_volume(
 
 class BRATSDataset(Dataset):
     def __init__(
-        self, metadata: pd.DataFrame, augmented: bool = False
+        self,
+        metadata: pd.DataFrame,
+        augmented: bool = False,
+        base_path: Path = Path("."),
     ) -> None:
         self.metadata = metadata
         self.augmented = augmented
+        self.base_path = base_path
+
         self.train_transform = A.Compose(
             [
                 A.Rotate(limit=5, border_mode=0, p=0.5),
@@ -76,7 +80,7 @@ class BRATSDataset(Dataset):
     def __getitem__(self, idx: int) -> dict[str, np.ndarray]:
         path = self.metadata.iloc[idx]["slice_path"]
 
-        with h5py.File(path, "r") as f:
+        with h5py.File(self.base_path / path, "r") as f:
             image: np.ndarray = f["image"][()]
             mask: np.ndarray = f["mask"][()]
 
@@ -94,7 +98,9 @@ class BRATSDataset(Dataset):
                 std = brain_pixels.std()
 
                 if std > 0:
-                    channel_data[brain_mask] = (channel_data[brain_mask] - mean) / std
+                    channel_data[brain_mask] = (
+                        channel_data[brain_mask] - mean
+                    ) / std
 
             channel_data[~brain_mask] = 0
 
@@ -104,6 +110,9 @@ class BRATSDataset(Dataset):
             augmented_version = self.train_transform(image=image, mask=mask)
             image = augmented_version["image"]
             mask = augmented_version["mask"]
+
+        image = np.moveaxis(image, -1, 0).astype(np.float32)
+        mask = np.moveaxis(mask, -1, 0).astype(np.float32)
 
         return {
             "image": image,
@@ -151,6 +160,15 @@ def make_cv_splits(
     return cv_splits
 
 
+def get_dataset_folds(
+    metadata_dir: Path | str = DATA_PATH / "content/data/meta_data.csv",
+) -> tuple[list[tuple[pd.DataFrame, pd.DataFrame]], pd.DataFrame]:
+    metadata = load_metadata(Path(metadata_dir))
+    train_metadata, test_metadata = split_by_volume(metadata)
+    cv_splits = make_cv_splits(train_metadata, k=5)
+    return cv_splits, test_metadata
+
+
 if __name__ == "__main__":
     metadata = load_metadata(DATA_PATH / "content/data/meta_data.csv")
     train_metadata, test_metadata = split_by_volume(metadata)
@@ -167,16 +185,18 @@ if __name__ == "__main__":
         print()
         fold_number += 1
 
-print("Test size:", len(test_ds))
-print("One test example:")
+    print("Test size:", len(test_ds))
+    print("One test example:")
 
-sample = test_ds[50]
+    sample = test_ds[50]
 
-print("Image shape:", sample["image"].shape)
-print("Mask shape:", sample["mask"].shape)
+    print("Image shape:", sample["image"].shape)
+    print("Mask shape:", sample["mask"].shape)
 
-print("Image min:", sample["image"].min())
-print("Image max:", sample["image"].max())
-print("Number of non-zero image pixels:", np.count_nonzero(sample["image"]))
+    print("Image min:", sample["image"].min())
+    print("Image max:", sample["image"].max())
+    print(
+        "Number of non-zero image pixels:", np.count_nonzero(sample["image"])
+    )
 
-print("Mask unique values:", np.unique(sample["mask"]))
+    print("Mask unique values:", np.unique(sample["mask"]))
