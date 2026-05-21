@@ -14,7 +14,12 @@ def calculate_dice(
     den = probs.sum(dim=(2, 3)) + targets.sum(dim=(2, 3))
 
     dice = (num + smooth) / (den + smooth)
-    return dice.mean()
+    valid_channels = targets.sum(dim=(2, 3)) > 0
+
+    if valid_channels.any():
+        return dice.masked_select(valid_channels).mean()
+
+    return dice.new_tensor(0.0)
 
 
 class DiceLoss(torch.nn.Module):
@@ -44,7 +49,7 @@ class DiceBCELoss(torch.nn.Module):
 
 
 if __name__ == "__main__":
-    loss_fn = DiceBCELoss()
+    loss_fn = DiceBCELoss(bce_weight=3.0)
 
     def model_fn():
         return UNet(3)
@@ -58,5 +63,5 @@ if __name__ == "__main__":
         loss_fn,
         metrics={"dice": calculate_dice},
         epochs=NUM_EPOCHS,
-        run_name=f"UNET_DICEBCE_SGD_MOM0.9_{NUM_EPOCHS}EPOCHS_{LR}LR",
+        run_name=f"UNET_MDICEBCE3_SGD_MOM0.9_{NUM_EPOCHS}EPOCHS_{LR}LR",
     )
