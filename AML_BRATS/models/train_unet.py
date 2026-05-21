@@ -3,8 +3,8 @@ import torch
 from .train_model import train_k_fold
 from .unet import UNet
 
-LR = 6e-2
-NUM_EPOCHS = 20
+LR = 1e-2
+NUM_EPOCHS = 100
 
 
 def calculate_dice(
@@ -63,5 +63,5 @@ if __name__ == "__main__":
         loss_fn,
         metrics={"dice": calculate_dice},
         epochs=NUM_EPOCHS,
-        run_name=f"UNET_MDICEBCE3_SGD_MOM0.9_{NUM_EPOCHS}EPOCHS_{LR}LR",
+        run_name=f"UNET_MDICEBCE3_SGD_{NUM_EPOCHS}EPOCHS_{LR}LR",
     )

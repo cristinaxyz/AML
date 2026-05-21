@@ -174,6 +174,7 @@ def train_k_fold(
     Train a given model for all k folds.
     Returns average train and validation loss across folds.
     """
+    print(f"Training {run_name}_BS{batch_size}...")
     folds, _ = get_dataset_folds()
     total_train_loss = 0.0
     total_val_loss = 0.0
