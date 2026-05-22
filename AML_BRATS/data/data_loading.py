@@ -5,6 +5,7 @@ import h5py
 import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
+
 import os
 print(os.getcwd())
 
@@ -81,6 +82,7 @@ class BRATSDataset(Dataset):
         return len(self.metadata)
 
     def __getitem__(self, idx: int) -> dict[str, np.ndarray]:
+
         #File path for selected slice from the metadata frame
         path = self.metadata.iloc[idx]["slice_path"]
 
@@ -108,12 +110,30 @@ class BRATSDataset(Dataset):
         #Ensure brain pixels 
             if len(brain_pixels) > 0:
             #Calculate mean and std intensity of brian pixels
+
+        path = self.metadata.iloc[idx]["slice_path"]
+
+        with h5py.File(self.base_path / path, "r") as f:
+            image: np.ndarray = f["image"][()]
+            mask: np.ndarray = f["mask"][()]
+
+        image = image.astype(np.float32)
+
+        brain_mask = np.any(image > 0, axis=-1)
+
+        for channel in range(image.shape[-1]):
+            channel_data = image[:, :, channel]
+
+            brain_pixels = channel_data[brain_mask]
+
+            if len(brain_pixels) > 0:
                 mean = brain_pixels.mean()
                 std = brain_pixels.std()
 
                 if std > 0:
                     # Z-score normalization only to brain pixels with formula
                     channel_data[brain_mask] = (channel_data[brain_mask] - mean) / std
+
 
                     channel_data[brain_mask] = (
                         channel_data[brain_mask] - mean
@@ -127,6 +147,12 @@ class BRATSDataset(Dataset):
         #if augmentaton is enabled:
         if self.augmented:
             #Apply augmentation to both image and mask
+
+            channel_data[~brain_mask] = 0
+
+            image[:, :, channel] = channel_data
+
+        if self.augmented:
             augmented_version = self.train_transform(image=image, mask=mask)
             image = augmented_version["image"]
             mask = augmented_version["mask"]
@@ -190,7 +216,9 @@ def get_dataset_folds(
 
 
 if __name__ == "__main__":
+
     metadata = load_metadata(DATA_PATH / "meta_data.csv")
+
     train_metadata, test_metadata = split_by_volume(metadata)
     cv_splits = make_cv_splits(train_metadata, k=5)
     test_ds = BRATSDataset(test_metadata)
