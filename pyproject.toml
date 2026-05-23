@@ -6,12 +6,17 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "albumentations>=2.0.8",
+    "fastapi>=0.136.1",
     "h5py>=3.16.0",
     "kagglehub>=1.0.1",
     "matplotlib>=3.10.9",
     "pandas>=3.0.2",
+    "pydantic>=2.13.4",
+    "python-multipart>=0.0.29",
     "scikit-learn>=1.8.0",
+    "starlette>=1.0.1",
     "tensorboard>=2.20.0",
     "torch>=2.11.0",
     "tqdm>=4.67.3",
+    "uvicorn>=0.47.0",
 ]
