@@ -7,6 +7,7 @@ from PIL import Image
 
 from fastapi import FastAPI, UploadFile, HTTPException, File
 from fastapi.responses import StreamingResponse
+from starlette.responses import RedirectResponse
 
 from pydantic import BaseModel
 
@@ -14,11 +15,6 @@ from pydantic import BaseModel
 
 class HealthResponse(BaseModel):
     message: str
-
-class ErrorResponse(BaseModel):
-    detail: str
-
-#class Prediction(BaseModel):
 
 def create_random_file():
     data = np.random.rand(256, 256)
@@ -28,6 +24,8 @@ def create_random_file():
 def fake_prediction():
     mask = np.zeros((256, 256))
     mask[50:100, 50:100] = 1
+    mask [20:50, 50:55] = 2
+    mask [25:50, 78:85] = 3
     return mask
 
 def load_h5_input(file: UploadFile = File(...)) -> np.ndarray:
@@ -49,7 +47,23 @@ def load_h5_input(file: UploadFile = File(...)) -> np.ndarray:
         raise HTTPException(status_code=415, detail=f"Invalid '.h5' file: {str(e)}")
 
 def preprocess(data: np.ndarray) -> np.ndarray:
-    return data
+    """
+    Normalization of the channel values from the user's MRI input.
+    """
+    image = data.astype(np.float32)
+    brain_mask = np.any(image > 0, axis=-1)
+    for channel in range(data.shape[-1]):
+        channel_data = image[:, :, channel]
+        brain_pixels = channel_data[brain_mask]
+        if len(brain_pixels) > 0:
+            mean = brain_pixels.mean()
+            std = brain_pixels.std()
+            if std > 0:
+                channel_data[brain_mask] = (channel_data[brain_mask] - mean) / std
+                channel_data[brain_mask] = (channel_data[brain_mask] - mean) / std
+        channel_data[~brain_mask] = 0
+        image[:, :, channel] = channel_data
+    return image
 
 def segmentation_to_png(prediction: np.ndarray):
     rgb = np.zeros((256, 256, 3), dtype=np.uint8)
@@ -65,31 +79,49 @@ def segmentation_to_png(prediction: np.ndarray):
 app = FastAPI(
     title="Brain Tumor Segmentation",
     description = """API for Brain Tumor Segmentation
+
+    Our model performs segmentation on MRI scan slices. We trained (model info).
+
+    It was trained on BraTS2020 dataset, which included MRI scan slices with segmentations performed manually by neuro-radiologists.
+
+    User guide:
+    1. Scroll to "Predict" section. 
+    2. Click on "Try it out" button.
+    3. Click on "Browse..." and select the scan file to be uploaded from your computer.
+    4. Click on the blue button "Execute".
+    5. Scroll to Response Body: you may visualize or save the '.png' file with the regions of the tumor from the uploaded scan.
     
-    Input 
-    Upload a `.h5' file with a slice from a MRI scan.
-
-    Output
-    Segmentation mask as a `.png` file:
-    - red, green, blue = regions of the tumor
-    - black = background
-
     Important!
     This API is for educational and testing purposes only.
     This is not a diagnostic tool!
-    
+
+    Input:
+    Upload a '.h5' file with a slice from a MRI scan.
+
+    Output:
+    Segmentation mask as a '.png' file:
+    - red, green, blue = regions of the tumor:
+        * the necrotic and non-enhancing tumor core 
+        * the peritumoral edema
+        * the GD-enhancing tumor
+    - black = background/healthy tissue
     """,
     version = "alpha",
 )
 
-@app.get("/",
-        description="Check if the API is running.")
+@app.get("/", description = "Root endpoint")
 async def root():
-    return {"message": "Brain Tumor Segmentation Classifier is running"}
+    return RedirectResponse(url='/docs')
+
+@app.get("/health",
+         response_model=HealthResponse,
+         description="Check if the API is running.")
+async def health():
+    return {"message": "API is running"}
 
 # predictions: work in progress
-@app.post("/predict")
-
+@app.post("/predict",
+          description="Upload a '.h5' MRI scan slice. Returns a '.png' file with the segmentation mask with 3 regions of the tumor identified.")
 async def predict(scan: UploadFile):
     if not scan.filename.endswith(".h5"):
         raise HTTPException(
@@ -97,7 +129,7 @@ async def predict(scan: UploadFile):
             detail="File must be '.h5'"
         )
     input_data = load_h5_input(scan)
-    preprocessed_input = preprocess(input_data)
+    #preprocessed_input = preprocess(input_data)
     #prediction = model.predict(preprocessed_input)
     prediction = fake_prediction()
     user_image = segmentation_to_png(prediction)
@@ -107,11 +139,8 @@ async def predict(scan: UploadFile):
     )
 
 def main():
-
     # model = ...
     create_random_file()
-
-
     
     uvicorn.run(app,
                 host = "127.0.0.1",

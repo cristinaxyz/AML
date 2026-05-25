@@ -1,3 +1,10 @@
+# Instructions on how to launch the API
+In the AML_BRATS directory, in the terminal, use the command:
+`uv run main.py`
+
+The API runs locally, open your browser at:
+`http://127.0.0.1:8000/docs`
+
 # Applied ML Template 🛠️
 
 **Welcome to Applied Machine Learning!** This template is designed to streamline the development process and boost the quality of your code.
