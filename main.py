@@ -36,9 +36,9 @@ def load_h5_input(file: UploadFile = File(...)) -> np.ndarray:
     """
     try:
         with h5py.File(file.file, "r") as f:
-            key = list(f.keys())[0]
-            if len(key) == 0:
+            if len(list(f.keys())) == 0:
                 raise HTTPException(status_code=400, detail="No scan found in this file")
+            key=(list(f.keys()))[0]
             input_data = np.array(f[key])
             return input_data 
     except OSError:
@@ -85,11 +85,17 @@ app = FastAPI(
     It was trained on BraTS2020 dataset, which included MRI scan slices with segmentations performed manually by neuro-radiologists.
 
     User guide:
+    * Root section redirects the user from http://127.0.0.1:8000 to http://127.0.0.1:8000/docs.
+
+    * Section Health shows that the API is running. 
+
+    * Steps to follow to get a prediction:
     1. Scroll to "Predict" section. 
-    2. Click on "Try it out" button.
-    3. Click on "Browse..." and select the scan file to be uploaded from your computer.
-    4. Click on the blue button "Execute".
-    5. Scroll to Response Body: you may visualize or save the '.png' file with the regions of the tumor from the uploaded scan.
+    2. Click on the arrow pointing down.
+    3. Click on "Try it out" button.
+    4. Click on "Browse..." and select the scan file to be uploaded from your computer.
+    5. Click on the blue button "Execute".
+    6. Scroll to Response Body: you may visualize or save the '.png' file with the regions of the tumor from the uploaded scan. 
     
     Important!
     This API is for educational and testing purposes only.
