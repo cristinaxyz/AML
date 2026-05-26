@@ -74,14 +74,30 @@ def train(cfg: DictConfig):
         else:
             raise ValueError
 
+    opt = cfg.training.optimizer
+    opt_type = opt.type
+    parts = [f"UNET_HYD_{num_epochs}EPOCHS", opt_type]
+    if opt_type == "sgd":
+        parts.append(f"LR{opt.sgd.lr}")
+    elif opt_type == "adam":
+        parts.append(f"LR{opt.adam.lr}")
+        parts.append(f"LR{opt.adam.weight_decay}")
+
+    parts.append(f"bce{(bce_weight)}")
+    if not cfg.training.augmentation:
+        parts.append("NOAUG")
+
+    run_name = "_".join(parts)
+
     train_k_fold(
         model_fn,
         optimizer_fn,
         loss_fn,
         metrics={"dice": calculate_dice},
         epochs=cfg.training.num_epochs,
-        run_name=f"UNET_HYD_{num_epochs}EPOCHS",
+        run_name=run_name,
         augment_train=cfg.training.augmentation,
+        batch_size=cfg.training.batch_size,
     )
 
 
