@@ -81,6 +81,7 @@ def train(cfg: DictConfig):
         metrics={"dice": calculate_dice},
         epochs=cfg.training.num_epochs,
         run_name=f"UNET_HYD_{num_epochs}EPOCHS",
+        augment_train=cfg.training.augmentation,
     )
 
 

@@ -1,6 +1,7 @@
 training:
   num_epochs: 80
   bce_weight: 1
+  augmentation: true
 
   optimizer:
     type: adam
