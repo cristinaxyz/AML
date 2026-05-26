@@ -169,6 +169,7 @@ def train_k_fold(
     run_name: str,
     metrics: dict[str, Callable[..., torch.Tensor]] = {},
     batch_size: int = 64,
+    augment_train: bool = True,
 ) -> tuple[float, float]:
     """
     Train a given model for all k folds.
@@ -179,7 +180,7 @@ def train_k_fold(
     total_train_loss = 0.0
     total_val_loss = 0.0
     for i, fold in enumerate(folds):
-        train_ds = BRATSDataset(fold[0], augmented=True)
+        train_ds = BRATSDataset(fold[0], augmented=augment_train)
         val_ds = BRATSDataset(fold[1])
 
         train_dl = DataLoader(
