@@ -1,10 +1,9 @@
+import hydra
 import torch
+from omegaconf import DictConfig
 
 from .train_model import train_k_fold
 from .unet import UNet
-
-LR = 1e-2
-NUM_EPOCHS = 100
 
 
 def calculate_dice(
@@ -48,20 +47,42 @@ class DiceBCELoss(torch.nn.Module):
         )
 
 
-if __name__ == "__main__":
-    loss_fn = DiceBCELoss(bce_weight=3.0)
+@hydra.main(
+    config_path="../config/models", config_name="unet", version_base=None
+)
+def train(cfg: DictConfig):
+    bce_weight = cfg.training.bce_weight
+    num_epochs = cfg.training.num_epochs
+
+    loss_fn = DiceBCELoss(bce_weight=bce_weight)
 
     def model_fn():
         return UNet(3)
 
     def optimizer_fn(params):
-        return torch.optim.SGD(params, lr=LR, momentum=0.9)
+        optimizer = cfg.training.optimizer
+        if optimizer.type == "sgd":
+            return torch.optim.SGD(
+                params, lr=optimizer.sgd.lr, momentum=optimizer.sgd.momentum
+            )
+        elif optimizer.type == "adam":
+            return torch.optim.Adam(
+                params,
+                lr=optimizer.adam.lr,
+                weight_decay=optimizer.adam.weight_decay,
+            )
+        else:
+            raise ValueError
 
     train_k_fold(
         model_fn,
         optimizer_fn,
         loss_fn,
         metrics={"dice": calculate_dice},
-        epochs=NUM_EPOCHS,
-        run_name=f"UNET_MDICEBCE3_SGD_{NUM_EPOCHS}EPOCHS_{LR}LR",
+        epochs=cfg.training.num_epochs,
+        run_name=f"UNET_HYD_{num_epochs}EPOCHS",
     )
+
+
+if __name__ == "__main__":
+    train()

@@ -1,6 +1,8 @@
 """
 Code adapted from Sovit Ranjan Rath
 https://debuggercafe.com/unet-from-scratch-using-pytorch/
+
+The architecture was changed slightly to match the BRATS scan dimensions.
 """
 
 import torch
