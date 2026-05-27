@@ -82,6 +82,10 @@ def train(cfg: DictConfig):
     opt = cfg.training.optimizer
     opt_type = opt.type
     parts = [f"UNET_HYD_{num_epochs}EPOCHS", opt_type]
+    if cfg.initial_bias:
+        parts.append("INBIAS")
+    if cfg.batch_norm:
+        parts.append("BNORM")
     if opt_type == "sgd":
         parts.append(f"LR{opt.sgd.lr}")
         parts.append(f"MOM{opt.sgd.momentum}")
