@@ -57,7 +57,12 @@ def train(cfg: DictConfig):
     loss_fn = DiceBCELoss(bce_weight=bce_weight)
 
     def model_fn():
-        return UNet(3)
+        model = UNet(3, cfg.batch_norm)
+        if cfg.initial_bias:
+            if model.out.bias is None:
+                raise RuntimeError
+            torch.nn.init.constant_(model.out.bias, -2.0)
+        return model
 
     def optimizer_fn(params):
         optimizer = cfg.training.optimizer
