@@ -79,9 +79,10 @@ def train(cfg: DictConfig):
     parts = [f"UNET_HYD_{num_epochs}EPOCHS", opt_type]
     if opt_type == "sgd":
         parts.append(f"LR{opt.sgd.lr}")
+        parts.append(f"MOM{opt.sgd.momentum}")
     elif opt_type == "adam":
         parts.append(f"LR{opt.adam.lr}")
-        parts.append(f"LR{opt.adam.weight_decay}")
+        parts.append(f"WD{opt.adam.weight_decay}")
 
     parts.append(f"bce{(bce_weight)}")
     if not cfg.training.augmentation:
