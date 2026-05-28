@@ -2,23 +2,9 @@ import hydra
 import torch
 from omegaconf import DictConfig
 
+from .metrics import calculate_dice
 from .train_model import train_k_fold
 from .unet import UNet
-
-
-def calculate_dice(
-    probs: torch.Tensor, targets: torch.Tensor, smooth: float = 1e-5
-) -> torch.Tensor:
-    num = 2 * (probs * targets).sum(dim=(2, 3))
-    den = probs.sum(dim=(2, 3)) + targets.sum(dim=(2, 3))
-
-    dice = (num + smooth) / (den + smooth)
-    valid_channels = targets.sum(dim=(2, 3)) > 0
-
-    if valid_channels.any():
-        return dice.masked_select(valid_channels).mean()
-
-    return dice.new_tensor(0.0)
 
 
 class DiceLoss(torch.nn.Module):
