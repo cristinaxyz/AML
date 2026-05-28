@@ -7,7 +7,7 @@ def main():
     """
     Demo for the users. 
     """
-    API_URL = "http://127.0.0.1:8000/predict"
+    API_URL = "https://aml-makn.onrender.com/predict"
 
     st.set_page_config(page_title = "Brain Tumor Segmentation Demo", layout = "centered")
     st.markdown("<h1 style='color: pink'>Brain Tumor Segmentation Demo<h1>", unsafe_allow_html=True)
