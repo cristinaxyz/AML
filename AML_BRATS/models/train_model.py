@@ -6,7 +6,11 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from ..data.data_loading import BRATSDataset, get_dataset_folds
-from .metrics import calculate_dice
+from .metrics import (
+    calculate_dice,
+    calculate_precision,
+    calculate_recall,
+)
 
 
 def train_epoch(
@@ -73,43 +77,25 @@ def validation_epoch(
     return val_loss / total_samples if total_samples else 0.0
 
 
-def compute_validation_metrics(
-    dataloader: DataLoader,
-    model: torch.nn.Module,
+def compute_metrics_from_outputs(
+    probs: torch.Tensor,
+    targets: torch.Tensor,
     metrics: dict[str, Callable[..., torch.Tensor]],
-    device: torch.device,
 ) -> dict[str, float]:
-    """Compute all metrics over the validation dataloader in a single pass."""
-    model.to(device)
-    model.eval()
+    """Compute all metrics from collected probabilities and targets."""
+    metric_avgs: dict[str, float] = {}
 
-    metric_sums: dict[str, float] = {name: 0.0 for name in metrics}
-    total_samples = 0
+    for metric_name, metric_fn in metrics.items():
+        metric_val = metric_fn(probs, targets)
 
-    with torch.no_grad():
-        for datapoint in tqdm(dataloader, desc="Metrics"):
-            X = datapoint["image"].to(device)
-            y_true = datapoint["mask"].to(device)
-            batch_size = X.size(0)
+        if metric_val.numel() == 1:
+            metric_val = float(metric_val.item())
+        else:
+            metric_val = float(metric_val.mean().item())
 
-            y_pred = model(X)
+        metric_avgs[metric_name] = metric_val
 
-            for metric_name, metric_fn in metrics.items():
-                metric_val = metric_fn(y_pred.sigmoid(), y_true)
-
-                if metric_val.numel() == 1:
-                    metric_val = float(metric_val.item())
-                else:
-                    metric_val = float(metric_val.mean().item())
-
-                metric_sums[metric_name] += metric_val * batch_size
-
-            total_samples += batch_size
-
-    if total_samples == 0:
-        return {name: 0.0 for name in metrics}
-
-    return {name: metric_sums[name] / total_samples for name in metrics}
+    return metric_avgs
 
 
 @torch.no_grad()
@@ -195,7 +181,7 @@ def train_model(
     metrics: dict[str, Callable[..., torch.Tensor]] = {},
     threshold_search_points: int = 101,
     device: torch.device = _get_device(),
-) -> tuple[float, float]:
+) -> tuple[float, float, float]:
     """
     Train any model with the specified loss function and optimizer.
     Train and validation losses are saved using tensorboard.
@@ -205,6 +191,7 @@ def train_model(
 
     train_loss = 0.0
     val_loss = 0.0
+    best_threshold = 0.5  # Default threshold
 
     for epoch in range(epochs):
         print(f"Epoch {epoch + 1}")
@@ -212,9 +199,14 @@ def train_model(
         writer.add_scalar("Loss/train", train_loss, epoch)
         val_loss = validation_epoch(validation_dl, model, loss_fn, device)
         writer.add_scalar("Loss/val", val_loss, epoch)
+
+        val_probs, val_targets = collect_validation_outputs(
+            validation_dl, model, device
+        )
+
         if metrics:
-            metric_avgs = compute_validation_metrics(
-                validation_dl, model, metrics, device
+            metric_avgs = compute_metrics_from_outputs(
+                val_probs, val_targets, metrics
             )
             for metric_name, metric_avg in metric_avgs.items():
                 writer.add_scalar(
@@ -222,9 +214,6 @@ def train_model(
                 )
                 print(f"Validation {metric_name}: {metric_avg}")
 
-        val_probs, val_targets = collect_validation_outputs(
-            validation_dl, model, device
-        )
         best_threshold, best_thresholded_dice = find_best_thresholded_dice(
             val_probs, val_targets, threshold_search_points
         )
@@ -241,7 +230,8 @@ def train_model(
         print(f"Train loss: {train_loss}, validation loss: {val_loss}")
 
     torch.save(model.state_dict(), f"models/{run_name}_final.pkl")
-    return train_loss, val_loss
+
+    return train_loss, val_loss, best_threshold
 
 
 def train_k_fold(
@@ -276,7 +266,7 @@ def train_k_fold(
         model = model_fn()
         optimizer = optimizer_fn(model.parameters())
 
-        train_loss, val_loss = train_model(
+        train_loss, val_loss, best_threshold = train_model(
             model,
             train_dl,
             val_dl,
@@ -289,6 +279,23 @@ def train_k_fold(
         )
         total_train_loss += train_loss
         total_val_loss += val_loss
+
+        with torch.no_grad():
+            val_probs, val_targets = collect_validation_outputs(
+                val_dl, model, _get_device()
+            )
+            binary_probs = (val_probs >= best_threshold).to(val_targets.dtype)
+            fold_precision = float(
+                calculate_precision(binary_probs, val_targets).item()
+            )
+            fold_recall = float(
+                calculate_recall(binary_probs, val_targets).item()
+            )
+
+        print(
+            f"Fold {i + 1} - Precision: {fold_precision:.4f}, "
+            f"Recall: {fold_recall:.4f}, Threshold: {best_threshold:.2f}"
+        )
 
     n = len(folds) if len(folds) > 0 else 1
     return total_train_loss / n, total_val_loss / n
