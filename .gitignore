@@ -8,5 +8,6 @@ venv/
 data/*
 runs/
 outputs/
+models/
 
 slurm-*
