@@ -5,6 +5,12 @@ In the AML_BRATS directory, in the terminal, use the command:
 The API runs locally, open your browser at:
 `http://127.0.0.1:8000/docs`
 
+To get the app restarted:
+`uvicorn api:app --reload`
+
+To get the demo running:
+`streamlit run main.py`
+
 # Applied ML Template 🛠️
 
 **Welcome to Applied Machine Learning!** This template is designed to streamline the development process and boost the quality of your code.
