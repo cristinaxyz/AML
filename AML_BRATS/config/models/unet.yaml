@@ -1,0 +1,14 @@
+training:
+  num_epochs: 80
+  bce_weight: 1
+
+  optimizer:
+    type: adam
+
+    adam:
+      lr: 1e-4
+      weight_decay: 1e-2
+
+    sgd:
+      lr: 1e-2
+      momentum: 0.9
