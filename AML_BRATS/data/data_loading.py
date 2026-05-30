@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import cast
 
 import albumentations as A
 import h5py
@@ -25,6 +26,30 @@ def load_metadata(path: Path) -> pd.DataFrame:
     metadata = pd.read_csv(path)
     metadata["slice_path"] = metadata["slice_path"].map(_process_path)
     return metadata
+
+
+def preprocess(image: np.ndarray) -> np.ndarray:
+    """Normalize each MRI channel using brain pixels only."""
+    image = image.astype(np.float32)
+    brain_mask = np.any(image > 0, axis=-1)
+
+    for channel in range(image.shape[-1]):
+        channel_data = image[:, :, channel]
+        brain_pixels = channel_data[brain_mask]
+
+        if len(brain_pixels) > 0:
+            mean = brain_pixels.mean()
+            std = brain_pixels.std()
+
+            if std > 0:
+                channel_data[brain_mask] = (
+                    channel_data[brain_mask] - mean
+                ) / std
+
+        channel_data[~brain_mask] = 0
+        image[:, :, channel] = channel_data
+
+    return image
 
 
 def split_by_volume(
@@ -114,9 +139,12 @@ class BRATSDataset(Dataset):
         path = self.metadata.iloc[idx]["slice_path"]
 
         with h5py.File(self.base_path / path, "r") as f:
-            image: np.ndarray = f["image"][()]
-            mask: np.ndarray = f["mask"][()]
+            image_dataset = cast(h5py.Dataset, f["image"])
+            mask_dataset = cast(h5py.Dataset, f["mask"])
+            image = np.asarray(image_dataset[()])
+            mask = np.asarray(mask_dataset[()])
 
+<<<<<<< HEAD
         image = image.astype(np.float32)
 
         brain_mask = np.any(image > 0, axis=-1)
@@ -151,6 +179,9 @@ class BRATSDataset(Dataset):
             channel_data[~brain_mask] = 0
 
             image[:, :, channel] = channel_data
+=======
+        image = preprocess(image)
+>>>>>>> 42892a6d (predictions use the real model)
 
         if self.augmented:
             augmented_version = self.train_transform(image=image, mask=mask)
