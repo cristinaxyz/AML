@@ -3,10 +3,6 @@ import streamlit as st
 import io
 from PIL import Image
 
-
-"""
-Demo for the users.
-"""
 API_URL = "http://127.0.0.1:8000/predict"
 
 st.set_page_config(
@@ -16,10 +12,24 @@ st.markdown(
     "<h1 style='color: pink'>Brain Tumor Segmentation Demo<h1>",
     unsafe_allow_html=True,
 )
+
 st.markdown(
-    "<h3 style='color:pink'>Upload a '.h5' MRI scan slice. Returns a '.png' file with the segmentation mask with 3 regions of the tumor identified. Our model performs segmentation on MRI scan slices. We trained (model info). It was trained on BraTS2020 dataset, which included MRI scan slices with segmentations performed manually by neuro-radiologists. </h3>",
+    """<h3 style='color: red; margin-bottom : 0';>Important<h3>
+    <h4 style='color: red; margin-bottom : 0;'>This API is for educational and testing purposes only.<h4>
+    <h4 style='color: red; margin-bottom : 0;'>This is not a diagnostic tool!<h4>
+    <h4 style='color:pink; margin-top : 5;'>Our model performs segmentation on MRI scan slices. We trained a UNet model to perform segmentation. The model was trained on BraTS2020 dataset, which included MRI scan slices with segmentations performed manually by neuro-radiologists. </h4>""",
     unsafe_allow_html=True,
 )
+
+st.write(
+    "User's guide\n" \
+    "1. Click on the button <Upload> below.\n" \
+    "2. Select a '.h5' file from your computer.\n" \
+    "3. Click on the button <Run Segmentation>.\n" \
+    "4. Click on the button <Download '.png!'> if you want to save the prediction in the '.png' format.\n" \
+    "5. Once you visualized/saved the prediction, you may click on <X> in the right corner of the file you uploaded and start again from step 1 for a new prediction!" \
+)
+
 uploading = st.file_uploader("Upload MRI scan '.h5'...", type=["h5"])
 if uploading != None:
     st.success("File uploaded! :D")
