@@ -8,8 +8,8 @@ The API runs locally, open your browser at:
 To get the app restarted:
 `uvicorn api:app --reload`
 
-To get the demo running:
-`streamlit run main.py`
+To get the demo running, in another terminal, at the same time with the app running:
+`streamlit run streamlit.py`
 
 # Applied ML Template 🛠️
 
