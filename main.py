@@ -44,12 +44,27 @@ def load_h5_input(file: UploadFile = File(...)) -> np.ndarray:
         )
 
 
-def segmentation_to_png(prediction: torch.Tensor, threshold: float = 0.5):
+def segmentation_to_png(
+    prediction: torch.Tensor,
+    background: np.ndarray,
+    contrast_channel: int = 0,
+    threshold: float = 0.5,
+):
     prediction_arr: np.ndarray = prediction.detach().cpu().numpy()
     binary_mask = prediction_arr >= threshold
-    rgb = np.zeros(
-        (prediction_arr.shape[1], prediction_arr.shape[2], 3), dtype=np.uint8
-    )
+
+    mri_channel = background[:, :, contrast_channel]
+    mri_min = mri_channel.min()
+    mri_max = mri_channel.max()
+    if mri_max > mri_min:
+        mri_normalized = (
+            (mri_channel - mri_min) / (mri_max - mri_min) * 255
+        ).astype(np.uint8)
+    else:
+        mri_normalized = np.zeros_like(mri_channel, dtype=np.uint8)
+
+    rgb = np.stack([mri_normalized, mri_normalized, mri_normalized], axis=2)
+
     rgb[binary_mask[0]] = [255, 0, 0]
     rgb[binary_mask[1]] = [0, 255, 0]
     rgb[binary_mask[2]] = [0, 0, 255]
@@ -136,15 +151,17 @@ async def predict(scan: UploadFile):
         )
     if not scan.filename.endswith(".h5"):
         raise HTTPException(status_code=400, detail="File must be '.h5'")
-    input_data = load_h5_input(scan)
-    input_data = preprocess(input_data)
+    raw_input = load_h5_input(scan)
+    input_data = preprocess(raw_input)
     input_tensor = torch.from_numpy(input_data).unsqueeze(0)
     input_tensor = input_tensor.permute(0, 3, 1, 2).float()
 
     with torch.no_grad():
         prediction = model(input_tensor).sigmoid()[0]
 
-    user_image = segmentation_to_png(prediction)
+    user_image = segmentation_to_png(
+        prediction, background=raw_input, contrast_channel=0
+    )
     return StreamingResponse(user_image, media_type="image/png")
 
 
