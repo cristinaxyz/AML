@@ -1,7 +1,7 @@
 initial_bias: false
 batch_norm: false
 training:
-  num_epochs: 80
+  num_epochs: 20
   batch_size: 64
   bce_weight: 1
   augmentation: true
