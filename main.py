@@ -86,9 +86,9 @@ app = FastAPI(
     Output:
     Segmentation mask as a '.png' file:
     - red, green, blue = regions of the tumor:
-        * the necrotic and non-enhancing tumor core 
-        * the peritumoral edema
-        * the GD-enhancing tumor
+        * red - the necrotic and non-enhancing tumor core 
+        * green - the peritumoral edema
+        * blue - the GD-enhancing tumor
     - black = background/healthy tissue
     """,
     version="alpha",
@@ -111,7 +111,23 @@ async def health():
 
 @app.post(
     "/predict",
-    description="Upload a '.h5' MRI scan slice. Returns a '.png' file with the segmentation mask with 3 regions of the tumor identified.",
+    summary="Segment MRI tumor regions",
+    description=(
+        "Upload a single MRI scan slice in HDF5 format (.h5). "
+        "The model performs multi-class segmentation and returns a PNG mask "
+        "with 3 color-coded tumor sub-regions overlaid on the scan. "
+        "Blue - D-enhancing tumor, green - the peritumoral edema, red - necrotic and non-enhancing tumor core"
+    ),
+    response_class=StreamingResponse,
+    responses={
+        200: {
+            "content": {"image/png": {}},
+            "description": "PNG segmentation mask with 3 labeled tumor regions.",
+        },
+        400: {
+            "description": "No file provided, the file is not in the right format (.h5), or it does not contain proper data.",
+        },
+    },
 )
 async def predict(scan: UploadFile):
     if scan.filename is None:
