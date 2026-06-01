@@ -99,12 +99,13 @@ app = FastAPI(
     Upload a '.h5' file with a slice from a MRI scan.
 
     Output:
-    Segmentation mask as a '.png' file:
+    PNG file with the FLAIR MRI contrast with the predicted tumor mask overlayed on top:
     - red, green, blue = regions of the tumor:
         * red - the necrotic and non-enhancing tumor core 
         * green - the peritumoral edema
         * blue - the GD-enhancing tumor
-    - black = background/healthy tissue
+    - black = background
+    - shades of gray = healthy tissue
     """,
     version="alpha",
 )
