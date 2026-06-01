@@ -1,7 +1,9 @@
-import requests
-import streamlit as st
 import io
+
+import requests
 from PIL import Image
+
+import streamlit as st
 
 API_URL = "http://127.0.0.1:8000/predict"
 
@@ -22,20 +24,21 @@ st.markdown(
 )
 
 st.write(
-    "User's guide\n" \
-    "1. Click on the button <Upload> below.\n" \
-    "2. Select a '.h5' file from your computer.\n" \
-    "3. Click on the button <Run Segmentation>.\n" \
-    "4. Click on the button <Download '.png!'> if you want to save the prediction in the '.png' format.\n" \
-    "5. Once you visualized/saved the prediction, you may click on <X> in the right corner of the file you uploaded and start again from step 1 for a new prediction!" \
+    "User's guide\n"
+    "1. Click on the button <Upload> below.\n"
+    "2. Select a '.h5' file from your computer.\n"
+    "3. Click on the button <Run Segmentation>.\n"
+    "4. Click on the button <Download '.png!'> if you want to save the prediction in the '.png' format.\n"
+    "5. Once you visualized/saved the prediction, you may click on <X> in the right corner of the file you uploaded and start again from step 1 for a new prediction!"
 )
 
 uploading = st.file_uploader("Upload MRI scan '.h5'...", type=["h5"])
-if uploading != None:
+if uploading is not None:
     st.success("File uploaded! :D")
     if st.button("Run Segmentation"):
-        files = {"scan": (uploading.name, uploading.getvalue())}
-        response = requests.post(API_URL, files=files)
+        with st.spinner("Running the model..."):
+            files = {"scan": (uploading.name, uploading.getvalue())}
+            response = requests.post(API_URL, files=files)
         if response.status_code == 200:
             st.success("Prediction is done!")
             image = Image.open(io.BytesIO(response.content))
@@ -46,6 +49,4 @@ if uploading != None:
                 file_name="segmentation.png",
             )
         else:
-            st.error(
-                f"Sorry, prediction failed: {response.status_code}. :("
-            )
+            st.error(f"Sorry, prediction failed: {response.status_code}. :(")
