@@ -5,7 +5,7 @@ from PIL import Image
 
 import streamlit as st
 
-API_URL = "https://aml-makn.onrender.com/predict"
+API_URL = "https://127.0.0.1:8000/predict/"
 
 st.set_page_config(
     page_title="Brain Tumor Segmentation Demo", layout="centered"
