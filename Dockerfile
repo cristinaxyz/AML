@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     libssl-dev \
     libffi-dev \
+    nano \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /code

@@ -165,15 +165,8 @@ async def predict(scan: UploadFile):
     )
     return StreamingResponse(user_image, media_type="image/png")
 
+model = UNet(3, MODEL_BATCH_NORM)
+model.load_state_dict(torch.load(MODEL_PATH, weights_only=True))
+model.eval()
 
-def main():
-    global model
-    model = UNet(3, MODEL_BATCH_NORM)
-    model.load_state_dict(torch.load(MODEL_PATH, weights_only=True))
-    model.eval()
-
-    uvicorn.run(app, host="127.0.0.1", port=8000)
-
-
-if __name__ == "__main__":
-    main()
+uvicorn.run(app, host="127.0.0.1", port=8000)
