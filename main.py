@@ -16,6 +16,13 @@ from AML_BRATS.models.unet import UNet
 MODEL_PATH = "models/UNET_HYD_25EPOCHS_adam_BNORM_LR0.0001_WD0.01_bce1_NOAUG_BS64_FOLD1_final.pkl"
 MODEL_BATCH_NORM = "BNORM" in MODEL_PATH
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = UNet(3, MODEL_BATCH_NORM)
+model.load_state_dict(
+    torch.load(MODEL_PATH, weights_only=True, map_location=device)
+)
+model.eval()
+
 
 class HealthResponse(BaseModel):
     message: str
@@ -164,7 +171,3 @@ async def predict(scan: UploadFile):
         prediction, background=raw_input, contrast_channel=0
     )
     return StreamingResponse(user_image, media_type="image/png")
-
-model = UNet(3, MODEL_BATCH_NORM)
-model.load_state_dict(torch.load(MODEL_PATH, weights_only=True))
-model.eval()
