@@ -5,7 +5,7 @@ from PIL import Image
 
 import streamlit as st
 
-API_URL = "https://amlbrats.muslii.top/docs/predict/"
+API_URL = "https://amlbrats.muslii.top/predict/"
 
 st.set_page_config(
     page_title="Brain Tumor Segmentation Demo", layout="centered"
